@@ -1,0 +1,32 @@
+export const flights = [
+  {
+    id: 1,
+    from: "COR",
+    to: "CUN",
+    airline: "Aeromexico",
+    departure: "08:30",
+    arrival: "14:10",
+    duration: "7h 40m",
+    price: 1200,
+  },
+  {
+    id: 2,
+    from: "AEP",
+    to: "MIA",
+    airline: "American Airlines",
+    departure: "22:15",
+    arrival: "06:50",
+    duration: "8h 35m",
+    price: 980,
+  },
+  {
+    id: 3,
+    from: "ROS",
+    to: "MAD",
+    airline: "Iberia",
+    departure: "17:00",
+    arrival: "09:30",
+    duration: "12h 30m",
+    price: 1500,
+  },
+];

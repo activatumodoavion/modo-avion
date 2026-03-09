@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+html, body {
+  background-color: #f3f4f6; /* gris claro */
+  color: #111827; /* gris oscuro real */
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #111827;
+}
+
+p {
+  color: #374151;
+}

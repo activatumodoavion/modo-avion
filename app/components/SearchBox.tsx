@@ -60,11 +60,33 @@ export default function SearchBox({ onSearch }: Props) {
     return (end.getTime() - start.getTime()) / (1000 * 3600 * 24);
   };
 
+  // NEW: asegurar que childrenAges tenga siempre el mismo largo que children
+  useEffect(() => {
+    if (children === 0) {
+      setChildrenAges([]);
+      return;
+    }
+
+    if (childrenAges.length < children) {
+      setChildrenAges([...childrenAges, ...Array(children - childrenAges.length).fill(0)]);
+    }
+
+    if (childrenAges.length > children) {
+      setChildrenAges(childrenAges.slice(0, children));
+    }
+  }, [children]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!departure || !returnDate) {
       alert("Seleccioná fechas válidas");
+      return;
+    }
+
+    // NEW: validar edades de niños
+    if (children > 0 && childrenAges.length !== children) {
+      alert("Completá la edad de todos los niños");
       return;
     }
 

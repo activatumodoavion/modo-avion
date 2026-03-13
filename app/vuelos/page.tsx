@@ -6,7 +6,7 @@ import { useTravelStore } from "../lib/travelStore";
 
 export default function VuelosPage() {
 
-  const { from, to, date } = useTravelStore();
+  const { from, to, departure } = useTravelStore();
 
   const [flights, setFlights] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -15,12 +15,12 @@ export default function VuelosPage() {
 
     async function loadFlights() {
 
-      if (!from || !to || !date) return;
+      if (!from || !to || !departure) return;
 
       setLoading(true);
 
       const res = await fetch(
-        `/api/flights?from=${from}&to=${to}&date=${date}`
+        `/api/flights?from=${from}&to=${to}&date=${departure}`
       );
 
       const data = await res.json();
@@ -32,7 +32,7 @@ export default function VuelosPage() {
 
     loadFlights();
 
-  }, [from, to, date]);
+  }, [from, to, departure]);
 
   return (
 

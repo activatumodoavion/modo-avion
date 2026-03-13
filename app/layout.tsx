@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Modo Avión",
-  description: "Plataforma de viajes moderna",
+  title: "Activá tu MODO AVIÓN | Vuelos y hoteles baratos",
+  description:
+    "Encontrá vuelos baratos, hoteles y paquetes turísticos al mejor precio.",
 };
 
 export default function RootLayout({
@@ -26,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} pt-20`}
+        className={`${geistSans.variable} ${geistMono.variable} pt-20 antialiased bg-gray-50`}
       >
         <Navbar />
         {children}

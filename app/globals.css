@@ -1,15 +1,20 @@
 @import "tailwindcss";
 
-html, body {
-  background-color: #f3f4f6; /* gris claro */
-  color: #111827; /* gris oscuro real */
-  font-family: Arial, Helvetica, sans-serif;
+/* scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  color: #111827;
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
 }
 
-p {
-  color: #374151;
+::-webkit-scrollbar-thumb {
+  background: #3b82f6;
+  border-radius: 4px;
+}
+
+/* smooth scroll */
+html {
+  scroll-behavior: smooth;
 }

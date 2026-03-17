@@ -1,68 +1,124 @@
 "use client";
 
-import { useState } from "react";
-import { airports } from "../lib/airports";
-import type { Airport } from "../lib/airports";
+import { useState, useEffect, useRef } from "react";
 
-type Props = {
-  onSelect: (code: string) => void;
+type Airport = {
+  id: string;
+  name: string;
+  iataCode: string;
+  address: {
+    cityName: string;
+    countryName: string;
+  };
 };
 
-export default function AirportAutocomplete({ onSelect }: Props) {
+type Props = {
+  value?: string;
+  onChange?: (value: string) => void;
+  onSelect?: (code: string) => void; // Mantenemos por compatibilidad
+  placeholder?: string;
+  className?: string;
+  label?: string;
+};
 
-  const [query, setQuery] = useState("");
+export default function AirportAutocomplete({ 
+  value = "", 
+  onChange, 
+  onSelect,
+  placeholder = "Ciudad o aeropuerto",
+  className = "",
+  label
+}: Props) {
+  const [query, setQuery] = useState(value);
   const [results, setResults] = useState<Airport[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const [selectedCode, setSelectedCode] = useState("");
 
-  function handleSearch(value: string) {
+  // Sincronizar con value externo
+  useEffect(() => {
+    if (value !== selectedCode && value !== query) {
+      setQuery(value);
+    }
+  }, [value]);
 
+  async function handleSearch(value: string) {
     setQuery(value);
+    onChange?.(value);
 
-    const search = value.toLowerCase();
+    if (value.length < 2) {
+      setResults([]);
+      setShowResults(false);
+      return;
+    }
 
-    const filtered = airports.filter((airport) => {
-      return (
-        airport.city.toLowerCase().includes(search) ||
-        airport.code.toLowerCase().includes(search) ||
-        airport.name.toLowerCase().includes(search) ||
-        airport.country.toLowerCase().includes(search)
-      );
-    });
-
-    setResults(filtered.slice(0, 5));
+    try {
+      const url = `/api/airports?keyword=${encodeURIComponent(value)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      setResults(data);
+      setShowResults(true);
+    } catch (error) {
+      console.error("Error en fetch:", error);
+      setResults([]);
+    }
   }
 
   function selectAirport(airport: Airport) {
-    setQuery(`${airport.city} (${airport.code})`);
-    setResults([]);
-    onSelect(airport.code);
+    const city = airport.address?.cityName || "";
+    const code = airport.iataCode || "";
+    const displayValue = `${city} (${code})`;
+
+    setQuery(displayValue);
+    setSelectedCode(code);
+    setShowResults(false);
+    
+    onChange?.(displayValue);
+    onSelect?.(code);
   }
 
   return (
-    <div className="relative">
-
+    <div className="relative w-full">
+      {label && (
+        <label className="block text-sm font-bold text-blue-800 mb-2 flex items-center gap-1">
+          {label}
+        </label>
+      )}
+      
       <input
+        type="text"
         value={query}
         onChange={(e) => handleSearch(e.target.value)}
-        placeholder="Ciudad o aeropuerto"
-        className="border p-2 w-full rounded"
+        placeholder={placeholder}
+        className={className}
+        autoComplete="off"
       />
 
-      {results.length > 0 && (
-        <div className="absolute bg-white border w-full shadow rounded z-50">
-
+      {showResults && results.length > 0 && (
+        <div 
+          className="absolute left-0 right-0 mt-1 bg-white border-2 border-blue-200 shadow-xl rounded-xl overflow-hidden"
+          style={{ 
+            top: '100%',
+            zIndex: 9999,
+            maxHeight: '250px',
+            overflowY: 'auto'
+          }}
+        >
           {results.map((airport) => (
             <div
-              key={airport.code}
-              className="p-2 hover:bg-gray-100 cursor-pointer"
+              key={airport.id}
+              className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors"
               onClick={() => selectAirport(airport)}
             >
-              {airport.city} — {airport.name} ({airport.code})
+              <div className="font-semibold text-gray-800">
+                {airport.address?.cityName} ({airport.iataCode})
+              </div>
+              <div className="text-sm text-gray-500">
+                {airport.name}, {airport.address?.countryName}
+              </div>
             </div>
           ))}
-
         </div>
       )}
-
     </div>
   );
 }

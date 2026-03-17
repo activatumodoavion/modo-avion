@@ -20,7 +20,7 @@ export default function SearchBox({ onSearch }: Props) {
   const [departure, setDeparture] = useState("");
   const [returnDate, setReturnDate] = useState("");
 
-  const [adults, setAdults] = useState(2);
+  const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [childrenAges, setChildrenAges] = useState<number[]>([]);
   const [rooms, setRooms] = useState(1);
@@ -60,7 +60,6 @@ export default function SearchBox({ onSearch }: Props) {
     return (end.getTime() - start.getTime()) / (1000 * 3600 * 24);
   };
 
-  // NEW: asegurar que childrenAges tenga siempre el mismo largo que children
   useEffect(() => {
     if (children === 0) {
       setChildrenAges([]);
@@ -68,7 +67,10 @@ export default function SearchBox({ onSearch }: Props) {
     }
 
     if (childrenAges.length < children) {
-      setChildrenAges([...childrenAges, ...Array(children - childrenAges.length).fill(0)]);
+      setChildrenAges([
+        ...childrenAges,
+        ...Array(children - childrenAges.length).fill(0),
+      ]);
     }
 
     if (childrenAges.length > children) {
@@ -76,7 +78,7 @@ export default function SearchBox({ onSearch }: Props) {
     }
   }, [children]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!departure || !returnDate) {
@@ -84,7 +86,16 @@ export default function SearchBox({ onSearch }: Props) {
       return;
     }
 
-    // NEW: validar edades de niños
+    if (!from || !to) {
+      alert("Seleccioná origen y destino");
+      return;
+    }
+
+    if (from === to) {
+      alert("Origen y destino no pueden ser iguales");
+      return;
+    }
+
     if (children > 0 && childrenAges.length !== children) {
       alert("Completá la edad de todos los niños");
       return;
@@ -101,126 +112,178 @@ export default function SearchBox({ onSearch }: Props) {
       rooms
     );
 
-    if (onSearch) {
-      onSearch(from, to, departure);
-    }
+    try {
+      const response = await fetch("/api/flights", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          origin: from,
+          destination: to,
+          departureDate: departure,
+          returnDate: returnDate,
+          adults,
+          children,
+          childrenAges,
+          currencyCode: "USD",
+          maxResults: 20,
+        }),
+      });
 
-    router.push("/vuelos");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error buscando vuelos");
+      }
+
+      router.push(
+        `/vuelos?data=${encodeURIComponent(JSON.stringify(data.data))}`
+      );
+
+      if (onSearch) {
+        onSearch(from, to, departure);
+      }
+
+    } catch (error) {
+      console.error("Error buscando vuelos:", error);
+      alert("Error buscando vuelos. Intentá nuevamente.");
+    }
+  };
+
+  // Texto del botón de pasajeros
+  const getPassengersText = () => {
+    const parts = [];
+    parts.push(`${adults} adulto${adults !== 1 ? 's' : ''}`);
+    if (children > 0) {
+      parts.push(`${children} niño${children !== 1 ? 's' : ''}`);
+    }
+    parts.push(`${rooms} hab.`);
+    return parts.join(" · ");
   };
 
   return (
     <form
       onSubmit={handleSearch}
-      className="bg-white text-gray-900 p-8 rounded-2xl shadow-2xl w-full max-w-6xl mx-auto"
+      className="bg-white text-gray-900 p-6 md:p-8 rounded-2xl shadow-2xl w-full max-w-6xl mx-auto"
     >
-      <div className="grid md:grid-cols-6 gap-4 items-end">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-start">
 
         {/* ORIGEN */}
-        <div>
-          <label className="block text-sm font-medium mb-1">✈️ Origen</label>
-
-          <AirportAutocomplete
-            onSelect={(code: string) => setFrom(code)}
-          />
-
+        <div className="relative lg:col-span-1">
+          <label className="block text-sm font-medium mb-2 text-gray-700">✈️ Origen</label>
+          <AirportAutocomplete onSelect={(code: string) => setFrom(code)} />
         </div>
 
         {/* DESTINO */}
-        <div>
-          <label className="block text-sm font-medium mb-1">📍 Destino</label>
-
-          <AirportAutocomplete
-            onSelect={(code: string) => setTo(code)}
-          />
-
+        <div className="relative lg:col-span-1">
+          <label className="block text-sm font-medium mb-2 text-gray-700">📍 Destino</label>
+          <AirportAutocomplete onSelect={(code: string) => setTo(code)} />
         </div>
 
         {/* FECHA IDA */}
-        <div>
-          <label className="block text-sm font-medium mb-1">📅 Ida</label>
+        <div className="lg:col-span-1">
+          <label className="block text-sm font-medium mb-2 text-gray-700">📅 Ida</label>
           <input
             type="date"
             min={today}
             value={departure}
             onChange={(e) => setDeparture(e.target.value)}
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         {/* FECHA VUELTA */}
-        <div>
-          <label className="block text-sm font-medium mb-1">📅 Vuelta</label>
+        <div className="lg:col-span-1">
+          <label className="block text-sm font-medium mb-2 text-gray-700">📅 Vuelta</label>
           <input
             type="date"
             min={departure || today}
             value={returnDate}
             onChange={(e) => setReturnDate(e.target.value)}
-            className="w-full border rounded-lg px-4 py-2"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         {/* PASAJEROS */}
-        <div className="relative col-span-2" ref={guestsRef}>
-          <label className="block text-sm font-medium mb-1">
-            👥 {adults} adultos · {children} niños · {rooms} hab.
-          </label>
-
+        <div className="relative lg:col-span-2" ref={guestsRef}>
+          <label className="block text-sm font-medium mb-2 text-gray-700">👥 Pasajeros</label>
+          
           <button
             type="button"
             onClick={() => setOpenGuests(!openGuests)}
-            className="w-full border rounded-lg px-4 py-2 text-left bg-white"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 text-left bg-white hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            Configurar
+            <span className="text-gray-900">{getPassengersText()}</span>
           </button>
 
           {openGuests && (
-            <div className="absolute mt-2 bg-white border rounded-xl shadow-xl p-4 w-96 z-50">
-
-              <div className="flex justify-between items-center mb-4">
-                <span>Adultos</span>
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => setAdults(Math.max(1, adults - 1))} className="px-3 border rounded">-</button>
-                  <span>{adults}</span>
-                  <button type="button" onClick={() => setAdults(adults + 1)} className="px-3 border rounded">+</button>
+            <div 
+              className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl p-5 w-80 z-[9999]"
+              style={{ top: '100%' }}
+            >
+              {/* Adultos */}
+              <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
+                <div>
+                  <div className="font-medium text-gray-900">Adultos</div>
+                  <div className="text-sm text-gray-500">13+ años</div>
                 </div>
-              </div>
-
-              <div className="flex justify-between items-center mb-4">
-                <span>Niños</span>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newCount = Math.max(0, children - 1);
-                      setChildren(newCount);
-                      setChildrenAges(childrenAges.slice(0, newCount));
-                    }}
-                    className="px-3 border rounded"
+                <div className="flex items-center gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => setAdults(Math.max(1, adults - 1))} 
+                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                    disabled={adults <= 1}
                   >
-                    -
+                    −
                   </button>
-
-                  <span>{children}</span>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setChildren(children + 1);
-                      setChildrenAges([...childrenAges, 0]);
-                    }}
-                    className="px-3 border rounded"
+                  <span className="w-6 text-center font-semibold">{adults}</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setAdults(adults + 1)} 
+                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full hover:bg-gray-100 transition-colors"
                   >
                     +
                   </button>
                 </div>
               </div>
 
+              {/* Niños */}
+              <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
+                <div>
+                  <div className="font-medium text-gray-900">Niños</div>
+                  <div className="text-sm text-gray-500">0-12 años</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      const newCount = Math.max(0, children - 1);
+                      setChildren(newCount);
+                    }}
+                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                    disabled={children <= 0}
+                  >
+                    −
+                  </button>
+                  <span className="w-6 text-center font-semibold">{children}</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setChildren(children + 1)}
+                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full hover:bg-gray-100 transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Edades de niños */}
               {children > 0 && (
-                <div className="space-y-2 mb-4">
+                <div className="mb-4 pb-4 border-b border-gray-100 space-y-3">
+                  <div className="font-medium text-sm text-gray-700 mb-2">Edades de los niños:</div>
                   {childrenAges.map((age, index) => (
                     <div key={index} className="flex justify-between items-center">
-                      <span>Edad niño {index + 1}</span>
-
+                      <span className="text-sm text-gray-600">Niño {index + 1}</span>
                       <select
                         value={age}
                         onChange={(e) => {
@@ -228,11 +291,11 @@ export default function SearchBox({ onSearch }: Props) {
                           updated[index] = Number(e.target.value);
                           setChildrenAges(updated);
                         }}
-                        className="border rounded px-2 py-1"
+                        className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        {[...Array(18)].map((_, i) => (
+                        {[...Array(13)].map((_, i) => (
                           <option key={i} value={i}>
-                            {i} años
+                            {i} {i === 1 ? 'año' : 'años'}
                           </option>
                         ))}
                       </select>
@@ -241,16 +304,40 @@ export default function SearchBox({ onSearch }: Props) {
                 </div>
               )}
 
+              {/* Habitaciones */}
               <div className="flex justify-between items-center">
-                <span>Habitaciones</span>
-
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => setRooms(Math.max(1, rooms - 1))} className="px-3 border rounded">-</button>
-                  <span>{rooms}</span>
-                  <button type="button" onClick={() => setRooms(rooms + 1)} className="px-3 border rounded">+</button>
+                <div>
+                  <div className="font-medium text-gray-900">Habitaciones</div>
+                  <div className="text-sm text-gray-500">Para estadía</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button 
+                    type="button" 
+                    onClick={() => setRooms(Math.max(1, rooms - 1))} 
+                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                    disabled={rooms <= 1}
+                  >
+                    −
+                  </button>
+                  <span className="w-6 text-center font-semibold">{rooms}</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setRooms(rooms + 1)} 
+                    className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-full hover:bg-gray-100 transition-colors"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
+              {/* Botón cerrar */}
+              <button
+                type="button"
+                onClick={() => setOpenGuests(false)}
+                className="w-full mt-4 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Listo
+              </button>
             </div>
           )}
         </div>
@@ -258,19 +345,18 @@ export default function SearchBox({ onSearch }: Props) {
 
       {calculateNights() > 0 && (
         <p className="mt-4 text-sm text-gray-600">
-          {calculateNights()} noches seleccionadas
+          {calculateNights()} {calculateNights() === 1 ? 'noche' : 'noches'} seleccionadas
         </p>
       )}
 
       <div className="mt-6 flex justify-end">
         <button
           type="submit"
-          className="bg-black text-white px-8 py-3 rounded-xl font-semibold"
+          className="bg-gradient-to-r from-orange-500 to-red-600 text-white px-8 py-3 rounded-xl font-semibold hover:from-orange-600 hover:to-red-700 transition-all shadow-lg"
         >
-          Buscar
+          🔍 Buscar vuelos
         </button>
       </div>
-
     </form>
   );
 }
